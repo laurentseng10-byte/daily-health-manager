@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>健康日誌</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --cream: #f5f0e8;
+    --cream-dark: #ede7d9;
+    --forest: #2d5a3d;
+    --forest-light: #3d7a52;
+    --forest-pale: #d4e8db;
+    --coral: #d4654a;
+    --coral-light: #e8845a;
+    --coral-pale: #f5e0d8;
+    --stone: #7a6e62;
+    --stone-light: #b5a898;
+    --ink: #1e1a16;
+    --ink-soft: #3d342c;
+    --white: #ffffff;
+    --card-shadow: 0 2px 20px rgba(45,90,61,0.08);
+    --card-shadow-hover: 0 8px 32px rgba(45,90,61,0.14);
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'DM Sans', 'Noto Serif TC', sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--cream-dark); }
+  ::-webkit-scrollbar-thumb { background: var(--stone-light); border-radius: 3px; }
+
+  /* HEADER */
+  .header {
+    background: var(--forest);
+    color: var(--cream);
+    padding: 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 24px rgba(45,90,61,0.25);
+  }
+  .header-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .logo {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: var(--coral);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-icon svg { width: 18px; height: 18px; fill: none; stroke: #fff; stroke-width: 2; }
+  .header-actions { display: flex; gap: 10px; align-items: center; }
+  .btn-profile {
+    background: rgba(255,255,255,0.15);
+    color: var(--cream);
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 8px 18px;
+    border-radius: 40px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn-profile:hover { background: rgba(255,255,255,0.25); }
+
+  /* MAIN LAYOUT */
+  .main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 28px 24px 60px;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 900px) {
+    .main { grid-template-columns: 1fr; padding: 16px 16px 60px; }
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+  }
+  .card:hover { box-shadow: var(--card-shadow-hover); }
+  .card-header {
+    padding: 18px 22px 14px;
+    border-bottom: 1px solid var(--cream-dark);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-title {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--forest);
+    letter-spacing: 0.03em;
+  }
+  .card-body { padding: 20px 22px; }
+
+  /* CALENDAR */
+  .calendar-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .calendar-month {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .cal-arrow {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--forest);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 1.1rem;
+    transition: background 0.15s;
+  }
+  .cal-arrow:hover { background: var(--forest-pale); }
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+  .cal-weekday {
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--stone);
+    padding: 4px 0;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .cal-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.15s;
+    color: var(--ink-soft);
+  }
+  .cal-day:hover { background: var(--forest-pale); color: var(--forest); }
+  .cal-day.selected { background: var(--forest); color: #fff; font-weight: 700; }
+  .cal-day.today { border: 2px solid var(--coral); }
+  .cal-day.has-data::after {
+    content: '';
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--coral);
+  }
+  .cal-day.selected.has-data::after { background: var(--coral-light); }
+  .cal-day.other-month { color: var(--stone-light); }
+  .cal-day.out-of-range { opacity: 0.3; pointer-events: none; }
+
+  /* PROFILE */
+  .profile-section { margin-bottom: 24px; }
+  .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--stone);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .form-input, .form-select {
+    border: 1.5px solid var(--cream-dark);
+    border-radius: var(--radius-sm);
+    padding: 9px 12px;
+    font-size: 0.88rem;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--ink);
+    background: var(--cream);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+  }
+  .form-input:focus, .form-select:focus {
+    border-color: var(--forest);
+    box-shadow: 0 0 0 3px rgba(45,90,61,0.1);
+    background: var(--white);
+  }
+  .form-select { cursor: pointer; }
+
+  /* TARGETS */
+  .targets-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .target-item {
+    background: var(--cream);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    border-left: 3px solid var(--forest);
+  }
+  .target-label { font-size: 0.78rem; color: var(--stone); font-weight: 500; margin-bottom: 2px; }
+  .target-value { font-size: 1.1rem; font-weight: 700; color: var(--forest); }
+  .target-sub { font-size: 0.75rem; color: var(--stone); }
+
+  /* RIGHT COLUMN */
+  .right-col { display: flex; flex-direction: column; gap: 24px; }
+
+  /* DAILY SUMMARY */
+  .summary-date {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 1.05rem;
+    color: var(--ink-soft);
+  }
+  .progress-rows { display: flex; flex-direction: column; gap: 14px; }
+  .progress-item { }
+  .progress-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+  }
+  .progress-name { font-size: 0.85rem; font-weight: 600; color: var(--ink-soft); }
+  .progress-nums { font-size: 0.82rem; color: var(--stone); }
+  .progress-nums strong { color: var(--forest); }
+  .progress-bar-bg {
+    height: 8px;
+    background: var(--cream-dark);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1);
+    min-width: 0;
+    max-width: 100%;
+  }
+  .fill-food { background: linear-gradient(90deg, var(--coral-light), var(--coral)); }
+  .fill-exercise { background: linear-gradient(90deg, var(--forest-light), var(--forest)); }
+  .fill-water { background: linear-gradient(90deg, #5bacd4, #2980b9); }
+  .progress-bar-fill.over { background: linear-gradient(90deg, #e8845a, #c0392b); }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--cream);
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 18px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 8px 4px;
+    border: none;
+    background: none;
+    border-radius: 7px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--stone);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .tab-btn.active {
+    background: var(--white);
+    color: var(--forest);
+    box-shadow: 0 1px 8px rgba(0,0,0,0.08);
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* BUTTONS */
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 40px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+    letter-spacing: 0.02em;
+  }
+  .btn-primary {
+    background: var(--forest);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--forest-light); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(45,90,61,0.3); }
+  .btn-coral {
+    background: var(--coral);
+    color: #fff;
+  }
+  .btn-coral:hover { background: var(--coral-light); transform: translateY(-1px); }
+  .btn-sm {
+    padding: 5px 12px;
+    font-size: 0.76rem;
+    border-radius: 20px;
+  }
+  .btn-ghost {
+    background: none;
+    color: var(--stone);
+    border: 1px solid var(--cream-dark);
+  }
+  .btn-ghost:hover { background: var(--cream); color: var(--ink); }
+  .btn-danger {
+    background: none;
+    color: #c0392b;
+    border: 1px solid #f5c6c2;
+  }
+  .btn-danger:hover { background: #fdf0ef; }
+
+  /* RECORD FORM */
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .form-row-3 { grid-template-columns: 1.5fr 1fr 1fr; }
+  .form-row-full { grid-template-columns: 1fr; }
+  .form-actions { display: flex; justify-content: flex-end; margin-top: 4px; }
+
+  /* RECORD LIST */
+  .record-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .record-item {
+    background: var(--cream);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .record-info { flex: 1; min-width: 0; }
+  .record-main { font-size: 0.88rem; font-weight: 600; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .record-sub { font-size: 0.78rem; color: var(--stone); }
+  .record-cal { font-size: 0.88rem; font-weight: 700; color: var(--coral); white-space: nowrap; }
+  .record-actions { display: flex; gap: 5px; flex-shrink: 0; }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(30,26,22,0.5);
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 28px;
+    width: 100%;
+    max-width: 460px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.2);
+    animation: modalIn 0.25s ease;
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .modal-title {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--forest);
+    margin-bottom: 20px;
+  }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+  /* CHARTS */
+  .charts-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+  .chart-container { position: relative; height: 200px; }
+
+  /* SECTION DIVIDER */
+  .section-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--stone-light);
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--cream-dark);
+  }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 20px;
+    color: var(--stone-light);
+    font-size: 0.85rem;
+  }
+
+  /* NOTIFICATION TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--forest);
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 40px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    z-index: 300;
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    white-space: nowrap;
+    box-shadow: 0 8px 24px rgba(45,90,61,0.35);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* SAVE BTN */
+  .save-profile-row { margin-top: 12px; display: flex; justify-content: flex-end; }
+
+  /* WATER TOTAL */
+  .water-total {
+    background: linear-gradient(135deg, #e8f4fc, #d0e8f8);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .water-total-num { font-size: 1.5rem; font-weight: 700; color: #2980b9; }
+  .water-total-label { font-size: 0.82rem; color: #5bacd4; font-weight: 500; }
+
+  /* STEP CALC */
+  .calc-badge {
+    background: var(--forest-pale);
+    color: var(--forest);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-block;
+    margin-top: 6px;
+  }
+
+  /* EDIT INLINE */
+  .editing .record-item { background: #fffbf5; border: 1.5px solid var(--coral-light); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" fill="white"/></svg>
+      </div>
+      健康日誌
+    </div>
+    <div class="header-actions">
+      <button class="btn-profile" onclick="showProfileModal()">個人設定</button>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN LAYOUT -->
+<main class="main">
+  <!-- LEFT SIDEBAR -->
+  <aside>
+    <!-- CALENDAR -->
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-header">
+        <span class="card-title">選擇日期</span>
+      </div>
+      <div class="card-body" style="padding:16px 18px;">
+        <div class="calendar-nav">
+          <button class="cal-arrow" onclick="changeMonth(-1)">&#8249;</button>
+          <span class="calendar-month" id="calMonthLabel"></span>
+          <button class="cal-arrow" onclick="changeMonth(1)">&#8250;</button>
+        </div>
+        <div class="cal-grid" id="calGrid">
+          <div class="cal-weekday">日</div>
+          <div class="cal-weekday">一</div>
+          <div class="cal-weekday">二</div>
+          <div class="cal-weekday">三</div>
+          <div class="cal-weekday">四</div>
+          <div class="cal-weekday">五</div>
+          <div class="cal-weekday">六</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TARGETS -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">每日目標</span>
+      </div>
+      <div class="card-body">
+        <div class="targets-grid" id="targetsGrid">
+          <div class="target-item">
+            <div class="target-label">每日熱量攝取目標</div>
+            <div class="target-value" id="targetCal">--</div>
+            <div class="target-sub">kcal</div>
+          </div>
+          <div class="target-item" style="border-left-color: var(--forest-light);">
+            <div class="target-label">運動消耗目標</div>
+            <div class="target-value" id="targetExercise">--</div>
+            <div class="target-sub">kcal</div>
+          </div>
+          <div class="target-item" style="border-left-color: #2980b9;">
+            <div class="target-label">每日飲水目標</div>
+            <div class="target-value" id="targetWater">--</div>
+            <div class="target-sub">ml</div>
+          </div>
+        </div>
+        <p style="font-size:0.76rem;color:var(--stone-light);margin-top:10px;text-align:center;">請先至「個人設定」輸入基本資料</p>
+      </div>
+    </div>
+  </aside>
+
+  <!-- RIGHT CONTENT -->
+  <div class="right-col">
+
+    <!-- DAILY SUMMARY -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">今日摘要</span>
+        <span class="summary-date" id="summaryDateLabel"></span>
+      </div>
+      <div class="card-body">
+        <div class="progress-rows">
+          <div class="progress-item">
+            <div class="progress-head">
+              <span class="progress-name">熱量攝取</span>
+              <span class="progress-nums"><strong id="foodCalTotal">0</strong> / <span id="foodCalTarget">--</span> kcal</span>
+            </div>
+            <div class="progress-bar-bg"><div class="progress-bar-fill fill-food" id="progressFood" style="width:0%"></div></div>
+          </div>
+          <div class="progress-item">
+            <div class="progress-head">
+              <span class="progress-name">運動消耗</span>
+              <span class="progress-nums"><strong id="exerciseCalTotal">0</strong> / <span id="exerciseCalTarget">--</span> kcal</span>
+            </div>
+            <div class="progress-bar-bg"><div class="progress-bar-fill fill-exercise" id="progressExercise" style="width:0%"></div></div>
+          </div>
+          <div class="progress-item">
+            <div class="progress-head">
+              <span class="progress-name">飲水量</span>
+              <span class="progress-nums"><strong id="waterTotal">0</strong> / <span id="waterTarget">--</span> ml</span>
+            </div>
+            <div class="progress-bar-bg"><div class="progress-bar-fill fill-water" id="progressWater" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RECORD INPUT -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">新增紀錄</span>
+        <span style="font-size:0.8rem;color:var(--stone);" id="recordDateBadge"></span>
+      </div>
+      <div class="card-body">
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab('food', this)">飲食</button>
+          <button class="tab-btn" onclick="switchTab('exercise', this)">運動</button>
+          <button class="tab-btn" onclick="switchTab('steps', this)">步數</button>
+          <button class="tab-btn" onclick="switchTab('water', this)">飲水</button>
+        </div>
+
+        <!-- FOOD TAB -->
+        <div class="tab-panel active" id="tab-food">
+          <div class="form-row form-row-3">
+            <div class="form-group">
+              <label class="form-label">食物種類</label>
+              <select class="form-select" id="foodCategory">
+                <option value="全榖雜糧類">全榖雜糧類</option>
+                <option value="蛋豆魚肉類">蛋豆魚肉類</option>
+                <option value="蔬菜類">蔬菜類</option>
+                <option value="水果類">水果類</option>
+                <option value="乳品類">乳品類</option>
+                <option value="油脂與堅果類">油脂與堅果類</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">食物名稱</label>
+              <input class="form-input" type="text" id="foodName" placeholder="例：白飯">
+            </div>
+            <div class="form-group">
+              <label class="form-label">份數</label>
+              <input class="form-input" type="number" id="foodServings" placeholder="1" min="0.1" step="0.5">
+            </div>
+          </div>
+          <div id="foodCalPreview" style="margin-bottom:10px;"></div>
+          <div class="form-actions">
+            <button class="btn btn-coral" onclick="addFoodRecord()">紀錄飲食</button>
+          </div>
+
+          <div class="section-label" style="margin-top:16px;">今日飲食紀錄</div>
+          <div class="record-list" id="foodRecordList"></div>
+        </div>
+
+        <!-- EXERCISE TAB -->
+        <div class="tab-panel" id="tab-exercise">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">運動種類</label>
+              <select class="form-select" id="exerciseType">
+                <option value="跑步">跑步</option>
+                <option value="重訓">重訓</option>
+                <option value="深蹲">深蹲</option>
+                <option value="Zumba Fitness">Zumba Fitness</option>
+                <option value="瑜珈伸展">瑜珈伸展</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">時間（分鐘）</label>
+              <input class="form-input" type="number" id="exerciseMinutes" placeholder="30" min="1">
+            </div>
+          </div>
+          <div id="exerciseCalPreview" style="margin-bottom:10px;"></div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="addExerciseRecord()">紀錄運動</button>
+          </div>
+
+          <div class="section-label" style="margin-top:16px;">今日運動紀錄</div>
+          <div class="record-list" id="exerciseRecordList"></div>
+        </div>
+
+        <!-- STEPS TAB -->
+        <div class="tab-panel" id="tab-steps">
+          <div class="form-row form-row-full">
+            <div class="form-group">
+              <label class="form-label">走路步數</label>
+              <input class="form-input" type="number" id="stepsCount" placeholder="例：8000" min="0">
+            </div>
+          </div>
+          <div id="stepsCalPreview" style="margin-bottom:10px;"></div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="addStepsRecord()">紀錄步數</button>
+          </div>
+
+          <div class="section-label" style="margin-top:16px;">今日步數紀錄</div>
+          <div class="record-list" id="stepsRecordList"></div>
+        </div>
+
+        <!-- WATER TAB -->
+        <div class="tab-panel" id="tab-water">
+          <div class="water-total">
+            <div>
+              <div class="water-total-num"><span id="waterTotalDisplay">0</span> ml</div>
+              <div class="water-total-label">今日累計飲水</div>
+            </div>
+          </div>
+          <div class="form-row form-row-full">
+            <div class="form-group">
+              <label class="form-label">喝水量（ml）</label>
+              <input class="form-input" type="number" id="waterAmount" placeholder="例：250" min="1">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn" style="background:#2980b9;color:#fff;" onclick="addWaterRecord()">紀錄飲水</button>
+          </div>
+
+          <div class="section-label" style="margin-top:16px;">今日飲水紀錄</div>
+          <div class="record-list" id="waterRecordList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">七日趨勢圖</span>
+      </div>
+      <div class="card-body">
+        <div class="charts-grid">
+          <div>
+            <div class="section-label">飲食熱量攝取（kcal）</div>
+            <div class="chart-container"><canvas id="chartFood"></canvas></div>
+          </div>
+          <div>
+            <div class="section-label">運動消耗熱量（kcal）</div>
+            <div class="chart-container"><canvas id="chartExercise"></canvas></div>
+          </div>
+          <div>
+            <div class="section-label">每日飲水量（ml）</div>
+            <div class="chart-container"><canvas id="chartWater"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- PROFILE MODAL -->
+<div class="modal-overlay" id="profileModal">
+  <div class="modal">
+    <div class="modal-title">個人基本資料</div>
+    <div class="profile-grid">
+      <div class="form-group">
+        <label class="form-label">身高（cm）</label>
+        <input class="form-input" type="number" id="profileHeight" placeholder="170" min="100" max="250">
+      </div>
+      <div class="form-group">
+        <label class="form-label">體重（kg）</label>
+        <input class="form-input" type="number" id="profileWeight" placeholder="65" min="30" max="300">
+      </div>
+      <div class="form-group">
+        <label class="form-label">年齡</label>
+        <input class="form-input" type="number" id="profileAge" placeholder="30" min="10" max="100">
+      </div>
+      <div class="form-group">
+        <label class="form-label">性別</label>
+        <select class="form-select" id="profileGender">
+          <option value="female">女性</option>
+          <option value="male">男性</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:12px;padding:10px 12px;background:var(--cream);border-radius:8px;font-size:0.78rem;color:var(--stone);">
+      目標熱量採用 Mifflin-St Jeor 公式計算（以輕度活動量為基礎）
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeProfileModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveProfile()">儲存設定</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-title" id="editModalTitle">編輯紀錄</div>
+    <div id="editModalBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeEditModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveEdit()">儲存變更</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===================== DATA & STORAGE =====================
+const STORAGE_KEY = 'healthJournal_v2';
+const PROFILE_KEY = 'healthProfile_v2';
+
+function loadAllData() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+  catch(e) { return {}; }
+}
+function saveAllData(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  cleanOldData();
+}
+function getDateData(dateStr) {
+  const all = loadAllData();
+  if (!all[dateStr]) all[dateStr] = { food: [], exercise: [], steps: [], water: [] };
+  return all[dateStr];
+}
+function setDateData(dateStr, data) {
+  const all = loadAllData();
+  all[dateStr] = data;
+  saveAllData(all);
+}
+function cleanOldData() {
+  const all = loadAllData();
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+  Object.keys(all).forEach(k => {
+    if (new Date(k) < cutoff) delete all[k];
+  });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+}
+function loadProfile() {
+  try { return JSON.parse(localStorage.getItem(PROFILE_KEY)) || {}; }
+  catch(e) { return {}; }
+}
+function saveProfileData(p) {
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+}
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+// ===================== CALORIE CONSTANTS =====================
+const FOOD_CALORIES = {
+  '全榖雜糧類': 70,
+  '蛋豆魚肉類': 75,
+  '蔬菜類': 25,
+  '水果類': 60,
+  '乳品類': 120,
+  '油脂與堅果類': 45
+};
+const EXERCISE_MET = {
+  '跑步': 9.8,
+  '重訓': 5.5,
+  '深蹲': 6.5,
+  'Zumba Fitness': 7.5,
+  '瑜珈伸展': 2.8
+};
+function calcExerciseCal(type, minutes, weightKg) {
+  const w = weightKg || 65;
+  const met = EXERCISE_MET[type] || 5;
+  return Math.round(met * w * (minutes / 60));
+}
+function calcStepsCal(steps, weightKg) {
+  const w = weightKg || 65;
+  return Math.round(steps * 0.04 * (w / 70));
+}
+
+// ===================== BMR & TARGETS =====================
+function calcTargets(profile) {
+  if (!profile.height || !profile.weight) return null;
+  const h = parseFloat(profile.height);
+  const w = parseFloat(profile.weight);
+  const a = parseFloat(profile.age) || 30;
+  const g = profile.gender || 'female';
+  let bmr;
+  if (g === 'male') bmr = 10 * w + 6.25 * h - 5 * a + 5;
+  else bmr = 10 * w + 6.25 * h - 5 * a - 161;
+  const tdee = Math.round(bmr * 1.375); // light activity
+  const waterTarget = Math.round(w * 35);
+  const exerciseTarget = Math.round(bmr * 0.2);
+  return { calories: tdee, water: waterTarget, exercise: exerciseTarget };
+}
+
+// ===================== CALENDAR =====================
+let calYear, calMonth, selectedDate;
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function formatDateDisplay(str) {
+  if (!str) return '';
+  const d = new Date(str + 'T00:00:00');
+  return `${d.getFullYear()} 年 ${d.getMonth()+1} 月 ${d.getDate()} 日`;
+}
+
+function initCalendar() {
+  const now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
+  selectedDate = todayStr();
+  renderCalendar();
+}
+
+function changeMonth(delta) {
+  calMonth += delta;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const label = document.getElementById('calMonthLabel');
+  label.textContent = `${calYear} 年 ${calMonth+1} 月`;
+
+  const grid = document.getElementById('calGrid');
+  // Keep header days
+  const headers = grid.querySelectorAll('.cal-weekday');
+  grid.innerHTML = '';
+  headers.forEach(h => grid.appendChild(h.cloneNode(true)));
+
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const daysInPrev = new Date(calYear, calMonth, 0).getDate();
+
+  const todayD = todayStr();
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+  const all = loadAllData();
+
+  // Prev month days
+  for (let i = 0; i < firstDay; i++) {
+    const d = daysInPrev - firstDay + 1 + i;
+    const cell = document.createElement('div');
+    cell.className = 'cal-day other-month';
+    cell.textContent = d;
+    grid.appendChild(cell);
+  }
+  // Current month days
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const cell = document.createElement('div');
+    cell.className = 'cal-day';
+    cell.textContent = d;
+    if (dateStr === selectedDate) cell.classList.add('selected');
+    if (dateStr === todayD) cell.classList.add('today');
+    if (new Date(dateStr) < cutoff) cell.classList.add('out-of-range');
+    // Check if has any data
+    if (all[dateStr]) {
+      const dd = all[dateStr];
+      const hasData = (dd.food&&dd.food.length)||(dd.exercise&&dd.exercise.length)||
+                      (dd.steps&&dd.steps.length)||(dd.water&&dd.water.length);
+      if (hasData) cell.classList.add('has-data');
+    }
+    cell.onclick = () => selectDate(dateStr);
+    grid.appendChild(cell);
+  }
+  // Next month fill
+  const totalCells = firstDay + daysInMonth;
+  const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  for (let i = 1; i <= remaining; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cal-day other-month';
+    cell.textContent = i;
+    grid.appendChild(cell);
+  }
+}
+
+function selectDate(dateStr) {
+  selectedDate = dateStr;
+  renderCalendar();
+  updateDailyView();
+}
+
+// ===================== DAILY VIEW =====================
+function updateDailyView() {
+  document.getElementById('summaryDateLabel').textContent = formatDateDisplay(selectedDate);
+  document.getElementById('recordDateBadge').textContent = formatDateDisplay(selectedDate);
+  updateSummaryProgress();
+  renderAllRecordLists();
+  updateWaterDisplay();
+}
+
+function updateSummaryProgress() {
+  const data = getDateData(selectedDate);
+  const profile = loadProfile();
+  const targets = calcTargets(profile);
+
+  const foodCal = data.food.reduce((s,r)=>s+r.calories,0);
+  const exerciseCal = data.exercise.reduce((s,r)=>s+r.calories,0) + data.steps.reduce((s,r)=>s+r.calories,0);
+  const waterMl = data.water.reduce((s,r)=>s+r.amount,0);
+
+  document.getElementById('foodCalTotal').textContent = foodCal;
+  document.getElementById('exerciseCalTotal').textContent = exerciseCal;
+  document.getElementById('waterTotal').textContent = waterMl;
+
+  if (targets) {
+    document.getElementById('foodCalTarget').textContent = targets.calories;
+    document.getElementById('exerciseCalTarget').textContent = targets.exercise;
+    document.getElementById('waterTarget').textContent = targets.water;
+    document.getElementById('progressFood').style.width = Math.min(100, foodCal/targets.calories*100) + '%';
+    document.getElementById('progressExercise').style.width = Math.min(100, exerciseCal/targets.exercise*100) + '%';
+    document.getElementById('progressWater').style.width = Math.min(100, waterMl/targets.water*100) + '%';
+    if (foodCal > targets.calories) document.getElementById('progressFood').classList.add('over');
+    else document.getElementById('progressFood').classList.remove('over');
+  } else {
+    document.getElementById('foodCalTarget').textContent = '--';
+    document.getElementById('exerciseCalTarget').textContent = '--';
+    document.getElementById('waterTarget').textContent = '--';
+    document.getElementById('progressFood').style.width = '0%';
+    document.getElementById('progressExercise').style.width = '0%';
+    document.getElementById('progressWater').style.width = '0%';
+  }
+}
+
+function updateWaterDisplay() {
+  const data = getDateData(selectedDate);
+  const total = data.water.reduce((s,r)=>s+r.amount,0);
+  document.getElementById('waterTotalDisplay').textContent = total;
+  document.getElementById('waterTotal').textContent = total;
+}
+
+// ===================== RECORD LISTS =====================
+function renderAllRecordLists() {
+  renderFoodList();
+  renderExerciseList();
+  renderStepsList();
+  renderWaterList();
+}
+
+function renderFoodList() {
+  const data = getDateData(selectedDate);
+  const el = document.getElementById('foodRecordList');
+  if (!data.food.length) { el.innerHTML = '<div class="empty-state">尚無飲食紀錄</div>'; return; }
+  el.innerHTML = data.food.map(r => `
+    <div class="record-item" id="fr-${r.id}">
+      <div class="record-info">
+        <div class="record-main">${escapeHtml(r.name)} <span style="font-weight:400;color:var(--stone);font-size:0.8rem;">(${escapeHtml(r.category)})</span></div>
+        <div class="record-sub">${r.servings} 份</div>
+      </div>
+      <span class="record-cal">${r.calories} kcal</span>
+      <div class="record-actions">
+        <button class="btn btn-ghost btn-sm" onclick="editRecord('food','${r.id}')">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteRecord('food','${r.id}')">刪除</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderExerciseList() {
+  const data = getDateData(selectedDate);
+  const el = document.getElementById('exerciseRecordList');
+  if (!data.exercise.length) { el.innerHTML = '<div class="empty-state">尚無運動紀錄</div>'; return; }
+  el.innerHTML = data.exercise.map(r => `
+    <div class="record-item" id="er-${r.id}">
+      <div class="record-info">
+        <div class="record-main">${escapeHtml(r.type)}</div>
+        <div class="record-sub">${r.minutes} 分鐘</div>
+      </div>
+      <span class="record-cal">-${r.calories} kcal</span>
+      <div class="record-actions">
+        <button class="btn btn-ghost btn-sm" onclick="editRecord('exercise','${r.id}')">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteRecord('exercise','${r.id}')">刪除</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderStepsList() {
+  const data = getDateData(selectedDate);
+  const el = document.getElementById('stepsRecordList');
+  if (!data.steps.length) { el.innerHTML = '<div class="empty-state">尚無步數紀錄</div>'; return; }
+  el.innerHTML = data.steps.map(r => `
+    <div class="record-item" id="sr-${r.id}">
+      <div class="record-info">
+        <div class="record-main">步行</div>
+        <div class="record-sub">${r.count.toLocaleString()} 步</div>
+      </div>
+      <span class="record-cal">-${r.calories} kcal</span>
+      <div class="record-actions">
+        <button class="btn btn-ghost btn-sm" onclick="editRecord('steps','${r.id}')">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteRecord('steps','${r.id}')">刪除</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderWaterList() {
+  const data = getDateData(selectedDate);
+  const el = document.getElementById('waterRecordList');
+  if (!data.water.length) { el.innerHTML = '<div class="empty-state">尚無飲水紀錄</div>'; return; }
+  el.innerHTML = data.water.map(r => `
+    <div class="record-item" id="wr-${r.id}">
+      <div class="record-info">
+        <div class="record-main">飲水</div>
+        <div class="record-sub"></div>
+      </div>
+      <span class="record-cal" style="color:#2980b9;">${r.amount} ml</span>
+      <div class="record-actions">
+        <button class="btn btn-ghost btn-sm" onclick="editRecord('water','${r.id}')">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteRecord('water','${r.id}')">刪除</button>
+      </div>
+    </div>`).join('');
+}
+
+// ===================== ADD RECORDS =====================
+function addFoodRecord() {
+  const cat = document.getElementById('foodCategory').value;
+  const name = document.getElementById('foodName').value.trim();
+  const servings = parseFloat(document.getElementById('foodServings').value);
+  if (!name) { showToast('請輸入食物名稱'); return; }
+  if (!servings || servings <= 0) { showToast('請輸入有效份數'); return; }
+  const cal = Math.round((FOOD_CALORIES[cat] || 70) * servings);
+  const data = getDateData(selectedDate);
+  data.food.push({ id: genId(), category: cat, name, servings, calories: cal });
+  setDateData(selectedDate, data);
+  document.getElementById('foodName').value = '';
+  document.getElementById('foodServings').value = '';
+  document.getElementById('foodCalPreview').innerHTML = '';
+  showToast('飲食紀錄已新增');
+  updateDailyView();
+  renderCalendar();
+  updateCharts();
+}
+
+function addExerciseRecord() {
+  const type = document.getElementById('exerciseType').value;
+  const minutes = parseFloat(document.getElementById('exerciseMinutes').value);
+  if (!minutes || minutes <= 0) { showToast('請輸入有效時間'); return; }
+  const profile = loadProfile();
+  const cal = calcExerciseCal(type, minutes, profile.weight);
+  const data = getDateData(selectedDate);
+  data.exercise.push({ id: genId(), type, minutes, calories: cal });
+  setDateData(selectedDate, data);
+  document.getElementById('exerciseMinutes').value = '';
+  document.getElementById('exerciseCalPreview').innerHTML = '';
+  showToast('運動紀錄已新增');
+  updateDailyView();
+  renderCalendar();
+  updateCharts();
+}
+
+function addStepsRecord() {
+  const steps = parseInt(document.getElementById('stepsCount').value);
+  if (!steps || steps <= 0) { showToast('請輸入有效步數'); return; }
+  const profile = loadProfile();
+  const cal = calcStepsCal(steps, profile.weight);
+  const data = getDateData(selectedDate);
+  data.steps.push({ id: genId(), count: steps, calories: cal });
+  setDateData(selectedDate, data);
+  document.getElementById('stepsCount').value = '';
+  document.getElementById('stepsCalPreview').innerHTML = '';
+  showToast('步數紀錄已新增');
+  updateDailyView();
+  renderCalendar();
+  updateCharts();
+}
+
+function addWaterRecord() {
+  const amount = parseInt(document.getElementById('waterAmount').value);
+  if (!amount || amount <= 0) { showToast('請輸入有效飲水量'); return; }
+  const data = getDateData(selectedDate);
+  data.water.push({ id: genId(), amount });
+  setDateData(selectedDate, data);
+  document.getElementById('waterAmount').value = '';
+  showToast('飲水紀錄已新增');
+  updateDailyView();
+  renderCalendar();
+  updateCharts();
+}
+
+// ===================== CALORIE PREVIEWS =====================
+document.getElementById('foodServings').addEventListener('input', updateFoodPreview);
+document.getElementById('foodCategory').addEventListener('change', updateFoodPreview);
+function updateFoodPreview() {
+  const cat = document.getElementById('foodCategory').value;
+  const s = parseFloat(document.getElementById('foodServings').value);
+  const el = document.getElementById('foodCalPreview');
+  if (s > 0) {
+    const cal = Math.round((FOOD_CALORIES[cat] || 70) * s);
+    el.innerHTML = `<span class="calc-badge">預估熱量：${cal} kcal</span>`;
+  } else el.innerHTML = '';
+}
+
+document.getElementById('exerciseMinutes').addEventListener('input', updateExercisePreview);
+document.getElementById('exerciseType').addEventListener('change', updateExercisePreview);
+function updateExercisePreview() {
+  const type = document.getElementById('exerciseType').value;
+  const mins = parseFloat(document.getElementById('exerciseMinutes').value);
+  const el = document.getElementById('exerciseCalPreview');
+  if (mins > 0) {
+    const profile = loadProfile();
+    const cal = calcExerciseCal(type, mins, profile.weight);
+    el.innerHTML = `<span class="calc-badge">預估消耗：${cal} kcal</span>`;
+  } else el.innerHTML = '';
+}
+
+document.getElementById('stepsCount').addEventListener('input', function() {
+  const steps = parseInt(this.value);
+  const el = document.getElementById('stepsCalPreview');
+  if (steps > 0) {
+    const profile = loadProfile();
+    const cal = calcStepsCal(steps, profile.weight);
+    el.innerHTML = `<span class="calc-badge">預估消耗：${cal} kcal</span>`;
+  } else el.innerHTML = '';
+});
+
+// ===================== DELETE =====================
+function deleteRecord(type, id) {
+  const data = getDateData(selectedDate);
+  data[type] = data[type].filter(r => r.id !== id);
+  setDateData(selectedDate, data);
+  showToast('紀錄已刪除');
+  updateDailyView();
+  renderCalendar();
+  updateCharts();
+}
+
+// ===================== EDIT =====================
+let editState = null;
+function editRecord(type, id) {
+  const data = getDateData(selectedDate);
+  const record = data[type].find(r => r.id === id);
+  if (!record) return;
+  editState = { type, id };
+  const modal = document.getElementById('editModal');
+  const body = document.getElementById('editModalBody');
+  const title = document.getElementById('editModalTitle');
+
+  if (type === 'food') {
+    title.textContent = '編輯飲食紀錄';
+    body.innerHTML = `
+      <div class="form-row form-row-3">
+        <div class="form-group">
+          <label class="form-label">食物種類</label>
+          <select class="form-select" id="editFoodCategory">
+            ${Object.keys(FOOD_CALORIES).map(c=>`<option value="${c}" ${c===record.category?'selected':''}>${c}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">食物名稱</label>
+          <input class="form-input" type="text" id="editFoodName" value="${escapeHtml(record.name)}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">份數</label>
+          <input class="form-input" type="number" id="editFoodServings" value="${record.servings}" min="0.1" step="0.5">
+        </div>
+      </div>`;
+  } else if (type === 'exercise') {
+    title.textContent = '編輯運動紀錄';
+    body.innerHTML = `
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">運動種類</label>
+          <select class="form-select" id="editExerciseType">
+            ${Object.keys(EXERCISE_MET).map(t=>`<option value="${t}" ${t===record.type?'selected':''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">時間（分鐘）</label>
+          <input class="form-input" type="number" id="editExerciseMinutes" value="${record.minutes}" min="1">
+        </div>
+      </div>`;
+  } else if (type === 'steps') {
+    title.textContent = '編輯步數紀錄';
+    body.innerHTML = `
+      <div class="form-row form-row-full">
+        <div class="form-group">
+          <label class="form-label">走路步數</label>
+          <input class="form-input" type="number" id="editStepsCount" value="${record.count}" min="0">
+        </div>
+      </div>`;
+  } else if (type === 'water') {
+    title.textContent = '編輯飲水紀錄';
+    body.innerHTML = `
+      <div class="form-row form-row-full">
+        <div class="form-group">
+          <label class="form-label">喝水量（ml）</label>
+          <input class="form-input" type="number" id="editWaterAmount" value="${record.amount}" min="1">
+        </div>
+      </div>`;
+  }
+  modal.classList.add('open');
+}
+
+function saveEdit() {
+  if (!editState) return;
+  const { type, id } = editState;
+  const data = getDateData(selectedDate);
+  const idx = data[type].findIndex(r => r.id === id);
+  if (idx < 0) return;
+  const profile = loadProfile();
+
+  if (type === 'food') {
+    const cat = document.getElementById('editFoodCategory').value;
+    const name = document.getElementById('editFoodName').value.trim();
+    const servings = parseFloat(document.getElementById('editFoodServings').value);
+    if (!name || !servings || servings <= 0) { showToast('請填寫完整資料'); return; }
+    const cal = Math.round((FOOD_CALORIES[cat] || 70) * servings);
+    data.food[idx] = { ...data.food[idx], category: cat, name, servings, calories: cal };
+  } else if (type === 'exercise') {
+    const t = document.getElementById('editExerciseType').value;
+    const mins = parseFloat(document.getElementById('editExerciseMinutes').value);
+    if (!mins || mins <= 0) { showToast('請輸入有效時間'); return; }
+    const cal = calcExerciseCal(t, mins, profile.weight);
+    data.exercise[idx] = { ...data.exercise[idx], type: t, minutes: mins, calories: cal };
+  } else if (type === 'steps') {
+    const steps = parseInt(document.getElementById('editStepsCount').value);
+    if (!steps || steps <= 0) { showToast('請輸入有效步數'); return; }
+    const cal = calcStepsCal(steps, profile.weight);
+    data.steps[idx] = { ...data.steps[idx], count: steps, calories: cal };
+  } else if (type === 'water') {
+    const amount = parseInt(document.getElementById('editWaterAmount').value);
+    if (!amount || amount <= 0) { showToast('請輸入有效飲水量'); return; }
+    data.water[idx] = { ...data.water[idx], amount };
+  }
+  setDateData(selectedDate, data);
+  closeEditModal();
+  showToast('紀錄已更新');
+  updateDailyView();
+  renderCalendar();
+  updateCharts();
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('open');
+  editState = null;
+}
+
+// ===================== PROFILE MODAL =====================
+function showProfileModal() {
+  const p = loadProfile();
+  if (p.height) document.getElementById('profileHeight').value = p.height;
+  if (p.weight) document.getElementById('profileWeight').value = p.weight;
+  if (p.age) document.getElementById('profileAge').value = p.age;
+  if (p.gender) document.getElementById('profileGender').value = p.gender;
+  document.getElementById('profileModal').classList.add('open');
+}
+function closeProfileModal() {
+  document.getElementById('profileModal').classList.remove('open');
+}
+function saveProfile() {
+  const h = parseFloat(document.getElementById('profileHeight').value);
+  const w = parseFloat(document.getElementById('profileWeight').value);
+  const a = parseFloat(document.getElementById('profileAge').value);
+  const g = document.getElementById('profileGender').value;
+  if (!h || !w || h < 100 || w < 30) { showToast('請輸入有效身高體重'); return; }
+  saveProfileData({ height: h, weight: w, age: a || 30, gender: g });
+  closeProfileModal();
+  updateTargetsDisplay();
+  updateSummaryProgress();
+  showToast('個人資料已儲存');
+}
+function updateTargetsDisplay() {
+  const profile = loadProfile();
+  const targets = calcTargets(profile);
+  if (targets) {
+    document.getElementById('targetCal').textContent = targets.calories;
+    document.getElementById('targetExercise').textContent = targets.exercise;
+    document.getElementById('targetWater').textContent = targets.water;
+  }
+}
+
+// ===================== TABS =====================
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ===================== CHARTS =====================
+let chartFood, chartExercise, chartWater;
+
+function getLast7Days() {
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+  }
+  return days;
+}
+
+function initCharts() {
+  const chartDefaults = {
+    type: 'bar',
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 11 }, color: '#7a6e62' } },
+        x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#7a6e62' } }
+      }
+    }
+  };
+
+  chartFood = new Chart(document.getElementById('chartFood'), {
+    ...chartDefaults,
+    data: { labels: [], datasets: [{ data: [], backgroundColor: 'rgba(212,101,74,0.7)', borderRadius: 6, borderSkipped: false }] }
+  });
+  chartExercise = new Chart(document.getElementById('chartExercise'), {
+    ...chartDefaults,
+    data: { labels: [], datasets: [{ data: [], backgroundColor: 'rgba(45,90,61,0.7)', borderRadius: 6, borderSkipped: false }] }
+  });
+  chartWater = new Chart(document.getElementById('chartWater'), {
+    ...chartDefaults,
+    data: { labels: [], datasets: [{ data: [], backgroundColor: 'rgba(41,128,185,0.7)', borderRadius: 6, borderSkipped: false }] }
+  });
+  updateCharts();
+}
+
+function updateCharts() {
+  const days = getLast7Days();
+  const all = loadAllData();
+  const labels = days.map(d => { const p = d.split('-'); return `${parseInt(p[1])}/${parseInt(p[2])}`; });
+  const foodData = days.map(d => {
+    const dd = all[d];
+    return dd ? dd.food.reduce((s,r)=>s+r.calories,0) : 0;
+  });
+  const exerciseData = days.map(d => {
+    const dd = all[d];
+    if (!dd) return 0;
+    return dd.exercise.reduce((s,r)=>s+r.calories,0) + dd.steps.reduce((s,r)=>s+r.calories,0);
+  });
+  const waterData = days.map(d => {
+    const dd = all[d];
+    return dd ? dd.water.reduce((s,r)=>s+r.amount,0) : 0;
+  });
+
+  chartFood.data.labels = labels;
+  chartFood.data.datasets[0].data = foodData;
+  chartFood.update();
+
+  chartExercise.data.labels = labels;
+  chartExercise.data.datasets[0].data = exerciseData;
+  chartExercise.update();
+
+  chartWater.data.labels = labels;
+  chartWater.data.datasets[0].data = waterData;
+  chartWater.update();
+}
+
+// ===================== TOAST =====================
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ===================== UTILS =====================
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Close modals on overlay click
+document.getElementById('profileModal').addEventListener('click', function(e) {
+  if (e.target === this) closeProfileModal();
+});
+document.getElementById('editModal').addEventListener('click', function(e) {
+  if (e.target === this) closeEditModal();
+});
+
+// ===================== INIT =====================
+window.addEventListener('DOMContentLoaded', () => {
+  initCalendar();
+  updateTargetsDisplay();
+  updateDailyView();
+  initCharts();
+  // Show profile prompt if no profile
+  const p = loadProfile();
+  if (!p.height) {
+    setTimeout(() => {
+      showToast('請先設定個人基本資料以獲得最佳體驗');
+      setTimeout(showProfileModal, 1000);
+    }, 600);
+  }
+});
+</script>
+</body>
+</html>
+```
