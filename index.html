@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>健康日誌</title>
+<title>健康管理日誌</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -454,6 +454,35 @@
   }
   .toast.show { transform: translateX(-50%) translateY(0); }
 
+  /* OUTSIDE MEAL */
+  .outside-meal-hint {
+    background: linear-gradient(135deg, #fef9e7, #fef5c8);
+    border: 1px solid #f0d060;
+    border-radius: var(--radius-sm);
+    padding: 9px 14px;
+    font-size: 0.82rem;
+    color: #8a6d10;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ai-loading {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    color: var(--stone);
+  }
+  .ai-spinner {
+    width: 14px; height: 14px;
+    border: 2px solid var(--cream-dark);
+    border-top-color: var(--forest);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
   /* SAVE BTN */
   .save-profile-row { margin-top: 12px; display: flex; justify-content: flex-end; }
 
@@ -613,22 +642,38 @@
           <div class="form-row form-row-3">
             <div class="form-group">
               <label class="form-label">食物種類</label>
-              <select class="form-select" id="foodCategory">
+              <select class="form-select" id="foodCategory" onchange="onFoodCategoryChange()">
                 <option value="全榖雜糧類">全榖雜糧類</option>
                 <option value="蛋豆魚肉類">蛋豆魚肉類</option>
                 <option value="蔬菜類">蔬菜類</option>
                 <option value="水果類">水果類</option>
                 <option value="乳品類">乳品類</option>
                 <option value="油脂與堅果類">油脂與堅果類</option>
+                <option value="其他（外食）">其他 (外食)</option>
               </select>
             </div>
             <div class="form-group">
               <label class="form-label">食物名稱</label>
               <input class="form-input" type="text" id="foodName" placeholder="例：白飯">
             </div>
-            <div class="form-group">
+            <div class="form-group" id="foodServingsGroup">
               <label class="form-label">份數</label>
               <input class="form-input" type="number" id="foodServings" placeholder="1" min="0.1" step="0.5">
+            </div>
+          </div>
+          <!-- 外食自訂區塊 -->
+          <div id="outsideMealBlock" style="display:none; margin-bottom:12px;">
+            <div class="outside-meal-hint">
+              <span>AI 將根據您輸入的食物名稱自動估算熱量</span>
+            </div>
+            <div class="form-row" style="margin-bottom:0;">
+              <div class="form-group">
+                <label class="form-label">手動輸入熱量（kcal）<span style="font-weight:400;color:var(--stone-light);font-size:0.75rem;">（可留空讓 AI 推算）</span></label>
+                <input class="form-input" type="number" id="outsideMealCal" placeholder="例：650" min="1">
+              </div>
+              <div class="form-group" style="display:flex;align-items:flex-end;">
+                <button class="btn btn-ghost" style="width:100%;" onclick="estimateCaloriesWithAI()" id="aiEstimateBtn">✨ AI 推算熱量</button>
+              </div>
             </div>
           </div>
           <div id="foodCalPreview" style="margin-bottom:10px;"></div>
@@ -834,7 +879,8 @@ const FOOD_CALORIES = {
   '蔬菜類': 25,
   '水果類': 60,
   '乳品類': 120,
-  '油脂與堅果類': 45
+  '油脂與堅果類': 45,
+  '其他（外食）': 400
 };
 const EXERCISE_MET = {
   '跑步': 9.8,
@@ -1092,16 +1138,31 @@ function renderWaterList() {
 function addFoodRecord() {
   const cat = document.getElementById('foodCategory').value;
   const name = document.getElementById('foodName').value.trim();
-  const servings = parseFloat(document.getElementById('foodServings').value);
   if (!name) { showToast('請輸入食物名稱'); return; }
-  if (!servings || servings <= 0) { showToast('請輸入有效份數'); return; }
-  const cal = Math.round((FOOD_CALORIES[cat] || 70) * servings);
+
+  let cal;
+  if (cat === '其他（外食）') {
+    const manualCal = parseInt(document.getElementById('outsideMealCal').value);
+    if (!manualCal || manualCal <= 0) { showToast('請輸入或使用 AI 推算熱量'); return; }
+    cal = manualCal;
+  } else {
+    const servings = parseFloat(document.getElementById('foodServings').value);
+    if (!servings || servings <= 0) { showToast('請輸入有效份數'); return; }
+    cal = Math.round((FOOD_CALORIES[cat] || 70) * servings);
+  }
+
+  const servings = cat === '其他（外食）' ? 1 : parseFloat(document.getElementById('foodServings').value);
   const data = getDateData(selectedDate);
   data.food.push({ id: genId(), category: cat, name, servings, calories: cal });
   setDateData(selectedDate, data);
   document.getElementById('foodName').value = '';
   document.getElementById('foodServings').value = '';
+  document.getElementById('outsideMealCal').value = '';
   document.getElementById('foodCalPreview').innerHTML = '';
+  // reset outside block
+  document.getElementById('outsideMealBlock').style.display = 'none';
+  document.getElementById('foodServingsGroup').style.display = '';
+  document.getElementById('foodCategory').value = '全榖雜糧類';
   showToast('飲食紀錄已新增');
   updateDailyView();
   renderCalendar();
@@ -1154,11 +1215,69 @@ function addWaterRecord() {
   updateCharts();
 }
 
-// ===================== CALORIE PREVIEWS =====================
+// ===================== FOOD CATEGORY CHANGE =====================
+function onFoodCategoryChange() {
+  const cat = document.getElementById('foodCategory').value;
+  const outsideBlock = document.getElementById('outsideMealBlock');
+  const servingsGroup = document.getElementById('foodServingsGroup');
+  if (cat === '其他（外食）') {
+    outsideBlock.style.display = 'block';
+    servingsGroup.style.display = 'none';
+    document.getElementById('foodServings').value = '1';
+  } else {
+    outsideBlock.style.display = 'none';
+    servingsGroup.style.display = '';
+  }
+  updateFoodPreview();
+}
+
+// AI 推算熱量
+async function estimateCaloriesWithAI() {
+  const foodName = document.getElementById('foodName').value.trim();
+  if (!foodName) { showToast('請先輸入食物名稱'); return; }
+
+  const btn = document.getElementById('aiEstimateBtn');
+  const preview = document.getElementById('foodCalPreview');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="ai-loading"><span class="ai-spinner"></span> 推算中...</span>';
+  preview.innerHTML = '';
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 200,
+        system: '你是一位營養師，請根據用戶輸入的食物名稱估算該食物的總熱量（kcal）。只回傳一個 JSON 物件，格式為 {"calories": 數字, "note": "簡短說明"}，不要包含任何其他文字或 markdown。',
+        messages: [{ role: 'user', content: `食物：${foodName}，請估算一份（一般外食份量）的熱量。` }]
+      })
+    });
+    const data = await response.json();
+    const text = data.content.map(i => i.text || '').join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    const cal = Math.round(parsed.calories);
+    document.getElementById('outsideMealCal').value = cal;
+    preview.innerHTML = `<span class="calc-badge">🤖 AI 推算：${cal} kcal${parsed.note ? '（' + parsed.note + '）' : ''}</span>`;
+  } catch (e) {
+    showToast('AI 推算失敗，請手動輸入熱量');
+    preview.innerHTML = '';
+  }
+  btn.disabled = false;
+  btn.innerHTML = '✨ AI 推算熱量';
+}
+
+
 document.getElementById('foodServings').addEventListener('input', updateFoodPreview);
 document.getElementById('foodCategory').addEventListener('change', updateFoodPreview);
+document.getElementById('foodName').addEventListener('input', function() {
+  const cat = document.getElementById('foodCategory').value;
+  if (cat === '其他（外食）') document.getElementById('foodCalPreview').innerHTML = '';
+});
 function updateFoodPreview() {
   const cat = document.getElementById('foodCategory').value;
+  if (cat === '其他（外食）') { document.getElementById('foodCalPreview').innerHTML = ''; return; }
   const s = parseFloat(document.getElementById('foodServings').value);
   const el = document.getElementById('foodCalPreview');
   if (s > 0) {
@@ -1214,21 +1333,28 @@ function editRecord(type, id) {
 
   if (type === 'food') {
     title.textContent = '編輯飲食紀錄';
+    const isOutside = record.category === '其他（外食）';
     body.innerHTML = `
       <div class="form-row form-row-3">
         <div class="form-group">
           <label class="form-label">食物種類</label>
-          <select class="form-select" id="editFoodCategory">
-            ${Object.keys(FOOD_CALORIES).map(c=>`<option value="${c}" ${c===record.category?'selected':''}>${c}</option>`).join('')}
+          <select class="form-select" id="editFoodCategory" onchange="onEditFoodCategoryChange()">
+            ${Object.keys(FOOD_CALORIES).map(c=>`<option value="${c}" ${c===record.category?'selected':''}>${c==='其他（外食）'?'🍱 '+c:c}</option>`).join('')}
           </select>
         </div>
         <div class="form-group">
           <label class="form-label">食物名稱</label>
           <input class="form-input" type="text" id="editFoodName" value="${escapeHtml(record.name)}">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="editFoodServingsGroup" style="${isOutside?'display:none':''}">
           <label class="form-label">份數</label>
           <input class="form-input" type="number" id="editFoodServings" value="${record.servings}" min="0.1" step="0.5">
+        </div>
+      </div>
+      <div id="editOutsideMealBlock" style="${isOutside?'':'display:none'}; margin-bottom:8px;">
+        <div class="form-group">
+          <label class="form-label">熱量（kcal）</label>
+          <input class="form-input" type="number" id="editOutsideMealCal" value="${isOutside?record.calories:''}" min="1" placeholder="例：650">
         </div>
       </div>`;
   } else if (type === 'exercise') {
@@ -1279,9 +1405,17 @@ function saveEdit() {
   if (type === 'food') {
     const cat = document.getElementById('editFoodCategory').value;
     const name = document.getElementById('editFoodName').value.trim();
-    const servings = parseFloat(document.getElementById('editFoodServings').value);
-    if (!name || !servings || servings <= 0) { showToast('請填寫完整資料'); return; }
-    const cal = Math.round((FOOD_CALORIES[cat] || 70) * servings);
+    if (!name) { showToast('請填寫食物名稱'); return; }
+    let cal, servings;
+    if (cat === '其他（外食）') {
+      cal = parseInt(document.getElementById('editOutsideMealCal').value);
+      if (!cal || cal <= 0) { showToast('請輸入熱量'); return; }
+      servings = 1;
+    } else {
+      servings = parseFloat(document.getElementById('editFoodServings').value);
+      if (!servings || servings <= 0) { showToast('請填寫份數'); return; }
+      cal = Math.round((FOOD_CALORIES[cat] || 70) * servings);
+    }
     data.food[idx] = { ...data.food[idx], category: cat, name, servings, calories: cal };
   } else if (type === 'exercise') {
     const t = document.getElementById('editExerciseType').value;
@@ -1305,6 +1439,19 @@ function saveEdit() {
   updateDailyView();
   renderCalendar();
   updateCharts();
+}
+
+function onEditFoodCategoryChange() {
+  const cat = document.getElementById('editFoodCategory').value;
+  const servingsGroup = document.getElementById('editFoodServingsGroup');
+  const outsideBlock = document.getElementById('editOutsideMealBlock');
+  if (cat === '其他（外食）') {
+    servingsGroup.style.display = 'none';
+    outsideBlock.style.display = '';
+  } else {
+    servingsGroup.style.display = '';
+    outsideBlock.style.display = 'none';
+  }
 }
 
 function closeEditModal() {
