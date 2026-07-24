@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>健康管理日誌</title>
+<title>健康日誌</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -524,7 +524,7 @@
       <div class="logo-icon">
         <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" fill="white"/></svg>
       </div>
-      健康管理日誌 My Health Note
+      健康日誌
     </div>
     <div class="header-actions">
       <button class="btn-profile" onclick="showProfileModal()">個人設定</button>
@@ -649,7 +649,7 @@
                 <option value="水果類">水果類</option>
                 <option value="乳品類">乳品類</option>
                 <option value="油脂與堅果類">油脂與堅果類</option>
-                <option value="其他（外食）">其他 (外食)</option>
+                <option value="其他（外食）">🍱 其他（外食）</option>
               </select>
             </div>
             <div class="form-group">
@@ -664,15 +664,15 @@
           <!-- 外食自訂區塊 -->
           <div id="outsideMealBlock" style="display:none; margin-bottom:12px;">
             <div class="outside-meal-hint">
-              <span>AI 將根據您輸入的食物名稱自動估算熱量</span>
+              <span>💡 輸入外食名稱（例：雞腿便當、珍珠奶茶），系統會自動估算熱量；也可手動輸入更精確的數值</span>
             </div>
             <div class="form-row" style="margin-bottom:0;">
               <div class="form-group">
-                <label class="form-label">手動輸入熱量（kcal）<span style="font-weight:400;color:var(--stone-light);font-size:0.75rem;">（可留空讓 AI 推算）</span></label>
+                <label class="form-label">手動輸入熱量（kcal）<span style="font-weight:400;color:var(--stone-light);font-size:0.75rem;">（可留空使用自動估算）</span></label>
                 <input class="form-input" type="number" id="outsideMealCal" placeholder="例：650" min="1">
               </div>
               <div class="form-group" style="display:flex;align-items:flex-end;">
-                <button class="btn btn-ghost" style="width:100%;" onclick="estimateCaloriesWithAI()" id="aiEstimateBtn">✨ AI 推算熱量</button>
+                <button class="btn btn-ghost" style="width:100%;" onclick="applyOutsideEstimate()" id="aiEstimateBtn">🔍 估算並帶入熱量</button>
               </div>
             </div>
           </div>
@@ -882,6 +882,275 @@ const FOOD_CALORIES = {
   '油脂與堅果類': 45,
   '其他（外食）': 400
 };
+// 常見食物熱量資料庫（kcal / 每份單位）
+const FOOD_DB = {
+  // ===== 全榖雜糧類 =====
+  '白飯': { cal: 280, unit: '碗' },
+  '糙米飯': { cal: 275, unit: '碗' },
+  '五穀飯': { cal: 270, unit: '碗' },
+  '紫米飯': { cal: 280, unit: '碗' },
+  '油飯': { cal: 450, unit: '碗' },
+  '稀飯': { cal: 140, unit: '碗' },
+  '粥': { cal: 140, unit: '碗' },
+  '吐司': { cal: 140, unit: '片' },
+  '全麥吐司': { cal: 130, unit: '片' },
+  '饅頭': { cal: 270, unit: '顆' },
+  '麵條': { cal: 280, unit: '碗' },
+  '烏龍麵': { cal: 300, unit: '碗' },
+  '米粉': { cal: 180, unit: '份' },
+  '冬粉': { cal: 100, unit: '份' },
+  '地瓜': { cal: 120, unit: '條' },
+  '馬鈴薯': { cal: 120, unit: '顆' },
+  '玉米': { cal: 110, unit: '根' },
+  '燕麥': { cal: 150, unit: '份' },
+  '麥片': { cal: 150, unit: '份' },
+  '貝果': { cal: 250, unit: '顆' },
+  '法國麵包': { cal: 190, unit: '份' },
+  '麵包': { cal: 180, unit: '個' },
+  '芋頭': { cal: 120, unit: '份' },
+  '南瓜': { cal: 80, unit: '份' },
+  // ===== 蛋豆魚肉類 =====
+  '雞蛋': { cal: 75, unit: '顆' },
+  '水煮蛋': { cal: 75, unit: '顆' },
+  '茶葉蛋': { cal: 75, unit: '顆' },
+  '滷蛋': { cal: 80, unit: '顆' },
+  '荷包蛋': { cal: 110, unit: '顆' },
+  '炒蛋': { cal: 120, unit: '份' },
+  '雞胸肉': { cal: 165, unit: '份' },
+  '雞腿': { cal: 250, unit: '隻' },
+  '雞翅': { cal: 100, unit: '隻' },
+  '豬排': { cal: 310, unit: '塊' },
+  '豬里肌': { cal: 200, unit: '份' },
+  '五花肉': { cal: 400, unit: '份' },
+  '牛排': { cal: 450, unit: '客' },
+  '牛肉': { cal: 200, unit: '份' },
+  '羊肉': { cal: 200, unit: '份' },
+  '鴨肉': { cal: 200, unit: '份' },
+  '鮭魚': { cal: 210, unit: '份' },
+  '鯖魚': { cal: 240, unit: '份' },
+  '鱈魚': { cal: 100, unit: '份' },
+  '鮪魚': { cal: 130, unit: '份' },
+  '虱目魚': { cal: 200, unit: '份' },
+  '吳郭魚': { cal: 140, unit: '份' },
+  '蝦子': { cal: 60, unit: '份' },
+  '蝦仁': { cal: 60, unit: '份' },
+  '花枝': { cal: 90, unit: '份' },
+  '蛤蜊': { cal: 40, unit: '份' },
+  '牡蠣': { cal: 60, unit: '份' },
+  '蚵仔': { cal: 60, unit: '份' },
+  '豆腐': { cal: 85, unit: '塊' },
+  '嫩豆腐': { cal: 60, unit: '盒' },
+  '豆干': { cal: 160, unit: '份' },
+  '豆皮': { cal: 100, unit: '份' },
+  '豆漿': { cal: 110, unit: '杯' },
+  '無糖豆漿': { cal: 80, unit: '杯' },
+  '毛豆': { cal: 120, unit: '份' },
+  '培根': { cal: 90, unit: '片' },
+  '香腸': { cal: 180, unit: '條' },
+  '熱狗': { cal: 150, unit: '條' },
+  '火腿': { cal: 60, unit: '片' },
+  // ===== 蔬菜類 =====
+  '高麗菜': { cal: 30, unit: '份' },
+  '花椰菜': { cal: 35, unit: '份' },
+  '青花菜': { cal: 35, unit: '份' },
+  '菠菜': { cal: 25, unit: '份' },
+  '空心菜': { cal: 25, unit: '份' },
+  '地瓜葉': { cal: 30, unit: '份' },
+  '大白菜': { cal: 20, unit: '份' },
+  '小白菜': { cal: 20, unit: '份' },
+  '青江菜': { cal: 20, unit: '份' },
+  '番茄': { cal: 30, unit: '顆' },
+  '小黃瓜': { cal: 15, unit: '條' },
+  '紅蘿蔔': { cal: 40, unit: '份' },
+  '茄子': { cal: 25, unit: '份' },
+  '青椒': { cal: 25, unit: '份' },
+  '甜椒': { cal: 30, unit: '份' },
+  '洋蔥': { cal: 40, unit: '顆' },
+  '香菇': { cal: 30, unit: '份' },
+  '金針菇': { cal: 35, unit: '份' },
+  '杏鮑菇': { cal: 35, unit: '份' },
+  '木耳': { cal: 25, unit: '份' },
+  '竹筍': { cal: 25, unit: '份' },
+  '苦瓜': { cal: 20, unit: '份' },
+  '絲瓜': { cal: 20, unit: '份' },
+  '冬瓜': { cal: 15, unit: '份' },
+  '生菜沙拉': { cal: 50, unit: '份' },
+  '沙拉': { cal: 80, unit: '份' },
+  '燙青菜': { cal: 60, unit: '份' },
+  // ===== 水果類 =====
+  '蘋果': { cal: 95, unit: '顆' },
+  '香蕉': { cal: 105, unit: '根' },
+  '芭樂': { cal: 80, unit: '顆' },
+  '橘子': { cal: 60, unit: '顆' },
+  '柳丁': { cal: 60, unit: '顆' },
+  '奇異果': { cal: 55, unit: '顆' },
+  '葡萄': { cal: 65, unit: '份' },
+  '西瓜': { cal: 50, unit: '片' },
+  '鳳梨': { cal: 80, unit: '份' },
+  '芒果': { cal: 100, unit: '顆' },
+  '木瓜': { cal: 60, unit: '份' },
+  '草莓': { cal: 50, unit: '份' },
+  '火龍果': { cal: 100, unit: '顆' },
+  '水梨': { cal: 100, unit: '顆' },
+  '桃子': { cal: 60, unit: '顆' },
+  '蓮霧': { cal: 35, unit: '顆' },
+  '櫻桃': { cal: 70, unit: '份' },
+  '藍莓': { cal: 40, unit: '份' },
+  // ===== 乳品類 =====
+  '全脂牛奶': { cal: 150, unit: '杯' },
+  '低脂牛奶': { cal: 120, unit: '杯' },
+  '脫脂牛奶': { cal: 90, unit: '杯' },
+  '鮮奶': { cal: 150, unit: '杯' },
+  '牛奶': { cal: 150, unit: '杯' },
+  '保久乳': { cal: 150, unit: '瓶' },
+  '優酪乳': { cal: 160, unit: '瓶' },
+  '優格': { cal: 100, unit: '杯' },
+  '希臘優格': { cal: 120, unit: '杯' },
+  '起司': { cal: 70, unit: '片' },
+  '乳酪': { cal: 70, unit: '片' },
+  '拿鐵': { cal: 150, unit: '杯' },
+  // ===== 油脂與堅果類 =====
+  '堅果': { cal: 180, unit: '份' },
+  '花生': { cal: 170, unit: '份' },
+  '腰果': { cal: 160, unit: '份' },
+  '杏仁': { cal: 170, unit: '份' },
+  '核桃': { cal: 185, unit: '份' },
+  '開心果': { cal: 160, unit: '份' },
+  '夏威夷豆': { cal: 200, unit: '份' },
+  '花生醬': { cal: 95, unit: '匙' },
+  '橄欖油': { cal: 120, unit: '匙' },
+  '奶油': { cal: 100, unit: '份' },
+  '美乃滋': { cal: 100, unit: '匙' },
+  '酪梨': { cal: 240, unit: '顆' },
+  // ===== 常見外食 =====
+  '便當': { cal: 800, unit: '個' },
+  '排骨便當': { cal: 850, unit: '個' },
+  '雞腿便當': { cal: 900, unit: '個' },
+  '魚排便當': { cal: 750, unit: '個' },
+  '素食便當': { cal: 650, unit: '個' },
+  '自助餐': { cal: 700, unit: '份' },
+  '滷肉飯': { cal: 550, unit: '碗' },
+  '雞肉飯': { cal: 520, unit: '碗' },
+  '牛肉麵': { cal: 650, unit: '碗' },
+  '陽春麵': { cal: 350, unit: '碗' },
+  '乾麵': { cal: 450, unit: '碗' },
+  '麻醬麵': { cal: 600, unit: '碗' },
+  '餛飩麵': { cal: 500, unit: '碗' },
+  '排骨酥麵': { cal: 650, unit: '碗' },
+  '涼麵': { cal: 450, unit: '盒' },
+  '炒飯': { cal: 700, unit: '盤' },
+  '炒麵': { cal: 600, unit: '盤' },
+  '燴飯': { cal: 750, unit: '盤' },
+  '咖哩飯': { cal: 800, unit: '盤' },
+  '丼飯': { cal: 750, unit: '碗' },
+  '親子丼': { cal: 700, unit: '碗' },
+  '牛丼': { cal: 750, unit: '碗' },
+  '水餃': { cal: 400, unit: '份(10顆)' },
+  '鍋貼': { cal: 450, unit: '份(10顆)' },
+  '小籠包': { cal: 450, unit: '籠' },
+  '蒸餃': { cal: 400, unit: '籠' },
+  '肉包': { cal: 280, unit: '顆' },
+  '菜包': { cal: 250, unit: '顆' },
+  '蘿蔔糕': { cal: 280, unit: '份' },
+  '蛋餅': { cal: 300, unit: '份' },
+  '起司蛋餅': { cal: 380, unit: '份' },
+  '飯糰': { cal: 550, unit: '個' },
+  '御飯糰': { cal: 220, unit: '個' },
+  '三明治': { cal: 300, unit: '個' },
+  '漢堡': { cal: 500, unit: '個' },
+  '大麥克': { cal: 560, unit: '個' },
+  '麥香雞': { cal: 380, unit: '個' },
+  '薯條': { cal: 330, unit: '份' },
+  '雞塊': { cal: 280, unit: '份(6塊)' },
+  '炸雞': { cal: 300, unit: '塊' },
+  '雞排': { cal: 650, unit: '片' },
+  '鹽酥雞': { cal: 580, unit: '份' },
+  '鹹酥雞': { cal: 580, unit: '份' },
+  '披薩': { cal: 250, unit: '片' },
+  '義大利麵': { cal: 700, unit: '盤' },
+  '焗烤': { cal: 750, unit: '份' },
+  '拉麵': { cal: 750, unit: '碗' },
+  '壽司': { cal: 400, unit: '份(8貫)' },
+  '生魚片': { cal: 150, unit: '份' },
+  '味噌湯': { cal: 60, unit: '碗' },
+  '關東煮': { cal: 300, unit: '份' },
+  '滷味': { cal: 450, unit: '份' },
+  '麻辣燙': { cal: 700, unit: '份' },
+  '火鍋': { cal: 900, unit: '份' },
+  '涮涮鍋': { cal: 800, unit: '份' },
+  '蚵仔煎': { cal: 500, unit: '份' },
+  '臭豆腐': { cal: 530, unit: '份' },
+  '肉圓': { cal: 450, unit: '顆' },
+  '大腸麵線': { cal: 480, unit: '碗' },
+  '麵線': { cal: 480, unit: '碗' },
+  '碗粿': { cal: 300, unit: '個' },
+  '潤餅': { cal: 350, unit: '捲' },
+  '刈包': { cal: 420, unit: '個' },
+  '胡椒餅': { cal: 450, unit: '個' },
+  '蔥油餅': { cal: 500, unit: '份' },
+  '蔥抓餅': { cal: 500, unit: '份' },
+  '車輪餅': { cal: 220, unit: '個' },
+  '紅豆餅': { cal: 220, unit: '個' },
+  '雞蛋糕': { cal: 280, unit: '份' },
+  '沙威瑪': { cal: 450, unit: '個' },
+  '熱狗堡': { cal: 350, unit: '個' },
+  '潛艇堡': { cal: 380, unit: '個' },
+  '凱薩沙拉': { cal: 350, unit: '份' },
+  '珍珠奶茶': { cal: 650, unit: '杯' },
+  '珍奶': { cal: 650, unit: '杯' },
+  '奶茶': { cal: 450, unit: '杯' },
+  '鮮奶茶': { cal: 280, unit: '杯' },
+  '手搖飲': { cal: 300, unit: '杯' },
+  '紅茶': { cal: 120, unit: '杯' },
+  '綠茶': { cal: 100, unit: '杯' },
+  '無糖綠茶': { cal: 0, unit: '杯' },
+  '無糖紅茶': { cal: 0, unit: '杯' },
+  '冬瓜茶': { cal: 220, unit: '杯' },
+  '木瓜牛奶': { cal: 380, unit: '杯' },
+  '黑咖啡': { cal: 5, unit: '杯' },
+  '美式咖啡': { cal: 10, unit: '杯' },
+  '可樂': { cal: 140, unit: '罐' },
+  '汽水': { cal: 140, unit: '罐' },
+  '啤酒': { cal: 130, unit: '罐' },
+  '燒餅油條': { cal: 460, unit: '份' },
+  '燒餅': { cal: 230, unit: '個' },
+  '油條': { cal: 230, unit: '條' },
+  '蛋塔': { cal: 300, unit: '顆' },
+  '甜甜圈': { cal: 250, unit: '個' },
+  '蛋糕': { cal: 350, unit: '片' },
+  '冰淇淋': { cal: 200, unit: '球' },
+  '豆花': { cal: 250, unit: '碗' },
+  '剉冰': { cal: 400, unit: '碗' },
+  '布丁': { cal: 150, unit: '個' },
+  '餅乾': { cal: 100, unit: '份' },
+  '洋芋片': { cal: 280, unit: '包' },
+  '巧克力': { cal: 250, unit: '份' },
+  '泡麵': { cal: 470, unit: '碗' }
+};
+
+// 依食物名稱比對資料庫（先完全比對，再取最長的部分比對）
+function matchFood(name) {
+  const n = String(name || '').replace(/\s+/g, '');
+  if (!n) return null;
+  if (FOOD_DB[n]) return { key: n, ...FOOD_DB[n] };
+  let best = null;
+  for (const key in FOOD_DB) {
+    const hit = n.includes(key) || (n.length >= 2 && key.includes(n));
+    if (hit && (!best || key.length > best.key.length)) {
+      best = { key, ...FOOD_DB[key] };
+    }
+  }
+  return best;
+}
+
+// 統一的熱量估算：優先用資料庫比對，否則退回類別平均值
+function estimateFoodCal(cat, name, servings) {
+  const s = servings > 0 ? servings : 1;
+  const m = matchFood(name);
+  if (m) return { cal: Math.round(m.cal * s), per: m.cal, unit: m.unit, matched: m.key, source: 'db' };
+  return { cal: Math.round((FOOD_CALORIES[cat] || 70) * s), per: FOOD_CALORIES[cat] || 70, unit: '份', matched: null, source: 'category' };
+}
+
 const EXERCISE_MET = {
   '跑步': 9.8,
   '重訓': 5.5,
@@ -1143,12 +1412,17 @@ function addFoodRecord() {
   let cal;
   if (cat === '其他（外食）') {
     const manualCal = parseInt(document.getElementById('outsideMealCal').value);
-    if (!manualCal || manualCal <= 0) { showToast('請輸入或使用 AI 推算熱量'); return; }
-    cal = manualCal;
+    if (manualCal > 0) {
+      cal = manualCal;
+    } else {
+      const m = matchFood(name);
+      if (!m) { showToast(`找不到「${name}」的熱量資料，請手動輸入熱量`); return; }
+      cal = m.cal;
+    }
   } else {
     const servings = parseFloat(document.getElementById('foodServings').value);
     if (!servings || servings <= 0) { showToast('請輸入有效份數'); return; }
-    cal = Math.round((FOOD_CALORIES[cat] || 70) * servings);
+    cal = estimateFoodCal(cat, name, servings).cal;
   }
 
   const servings = cat === '其他（外食）' ? 1 : parseFloat(document.getElementById('foodServings').value);
@@ -1231,59 +1505,49 @@ function onFoodCategoryChange() {
   updateFoodPreview();
 }
 
-// AI 推算熱量
-async function estimateCaloriesWithAI() {
+// 外食：估算並帶入手動熱量欄位
+function applyOutsideEstimate() {
   const foodName = document.getElementById('foodName').value.trim();
   if (!foodName) { showToast('請先輸入食物名稱'); return; }
-
-  const btn = document.getElementById('aiEstimateBtn');
-  const preview = document.getElementById('foodCalPreview');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="ai-loading"><span class="ai-spinner"></span> 推算中...</span>';
-  preview.innerHTML = '';
-
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 200,
-        system: '你是一位營養師，請根據用戶輸入的食物名稱估算該食物的總熱量（kcal）。只回傳一個 JSON 物件，格式為 {"calories": 數字, "note": "簡短說明"}，不要包含任何其他文字或 markdown。',
-        messages: [{ role: 'user', content: `食物：${foodName}，請估算一份（一般外食份量）的熱量。` }]
-      })
-    });
-    const data = await response.json();
-    const text = data.content.map(i => i.text || '').join('');
-    const clean = text.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(clean);
-    const cal = Math.round(parsed.calories);
-    document.getElementById('outsideMealCal').value = cal;
-    preview.innerHTML = `<span class="calc-badge">🤖 AI 推算：${cal} kcal${parsed.note ? '（' + parsed.note + '）' : ''}</span>`;
-  } catch (e) {
-    showToast('AI 推算失敗，請手動輸入熱量');
-    preview.innerHTML = '';
-  }
-  btn.disabled = false;
-  btn.innerHTML = '✨ AI 推算熱量';
+  const m = matchFood(foodName);
+  if (!m) { showToast(`找不到「${foodName}」的熱量資料，請手動輸入熱量`); return; }
+  document.getElementById('outsideMealCal').value = m.cal;
+  updateFoodPreview();
 }
-
 
 document.getElementById('foodServings').addEventListener('input', updateFoodPreview);
 document.getElementById('foodCategory').addEventListener('change', updateFoodPreview);
-document.getElementById('foodName').addEventListener('input', function() {
-  const cat = document.getElementById('foodCategory').value;
-  if (cat === '其他（外食）') document.getElementById('foodCalPreview').innerHTML = '';
-});
+document.getElementById('foodName').addEventListener('input', updateFoodPreview);
+document.getElementById('outsideMealCal').addEventListener('input', updateFoodPreview);
 function updateFoodPreview() {
   const cat = document.getElementById('foodCategory').value;
-  if (cat === '其他（外食）') { document.getElementById('foodCalPreview').innerHTML = ''; return; }
-  const s = parseFloat(document.getElementById('foodServings').value);
+  const name = document.getElementById('foodName').value.trim();
   const el = document.getElementById('foodCalPreview');
-  if (s > 0) {
-    const cal = Math.round((FOOD_CALORIES[cat] || 70) * s);
-    el.innerHTML = `<span class="calc-badge">預估熱量：${cal} kcal</span>`;
-  } else el.innerHTML = '';
+
+  if (cat === '其他（外食）') {
+    const manual = parseInt(document.getElementById('outsideMealCal').value);
+    if (manual > 0) {
+      el.innerHTML = `<span class="calc-badge">✍️ 手動輸入：${manual} kcal</span>`;
+      return;
+    }
+    if (!name) { el.innerHTML = ''; return; }
+    const m = matchFood(name);
+    if (m) {
+      el.innerHTML = `<span class="calc-badge">🔍 自動估算：${m.cal} kcal（${escapeHtml(m.key)}／每${escapeHtml(m.unit)}）</span>`;
+    } else {
+      el.innerHTML = `<span class="calc-badge" style="background:#fef5c8;color:#8a6d10;">找不到「${escapeHtml(name)}」的資料，請手動輸入熱量</span>`;
+    }
+    return;
+  }
+
+  const s = parseFloat(document.getElementById('foodServings').value);
+  if (!(s > 0)) { el.innerHTML = ''; return; }
+  const est = estimateFoodCal(cat, name, s);
+  if (est.source === 'db') {
+    el.innerHTML = `<span class="calc-badge">🔍 預估熱量：${est.cal} kcal（${escapeHtml(est.matched)}：每${escapeHtml(est.unit)}約 ${est.per} kcal × ${s}）</span>`;
+  } else {
+    el.innerHTML = `<span class="calc-badge">預估熱量：${est.cal} kcal（${escapeHtml(cat)}平均每份 ${est.per} kcal × ${s}）</span>`;
+  }
 }
 
 document.getElementById('exerciseMinutes').addEventListener('input', updateExercisePreview);
@@ -1409,12 +1673,16 @@ function saveEdit() {
     let cal, servings;
     if (cat === '其他（外食）') {
       cal = parseInt(document.getElementById('editOutsideMealCal').value);
-      if (!cal || cal <= 0) { showToast('請輸入熱量'); return; }
+      if (!cal || cal <= 0) {
+        const m = matchFood(name);
+        if (!m) { showToast('請輸入熱量'); return; }
+        cal = m.cal;
+      }
       servings = 1;
     } else {
       servings = parseFloat(document.getElementById('editFoodServings').value);
       if (!servings || servings <= 0) { showToast('請填寫份數'); return; }
-      cal = Math.round((FOOD_CALORIES[cat] || 70) * servings);
+      cal = estimateFoodCal(cat, name, servings).cal;
     }
     data.food[idx] = { ...data.food[idx], category: cat, name, servings, calories: cal };
   } else if (type === 'exercise') {
